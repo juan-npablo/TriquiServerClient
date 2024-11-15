@@ -34,10 +34,23 @@ class TicTacToeClient:
         if self.name:
             try:
                 self.client.send(self.name.encode())
+                # Recibir el rol primero
                 self.role = self.client.recv(1024).decode()
-                print(f"Rol recibido: {self.role}")
-                self.name_window.destroy()
-                self.setup_game_window()
+                
+                # Si el rol parece ser un JSON, es porque recibimos el estado del juego
+                try:
+                    game_state = json.loads(self.role)
+                    self.role = "PLAYER"  # Si recibimos el estado del juego, somos el segundo jugador
+                    self.name_window.destroy()
+                    self.setup_game_window()
+                    self.update_board(game_state)
+                    self.update_status(game_state)
+                except json.JSONDecodeError:
+                    # Si no es JSON, es el rol normal
+                    print(f"Rol recibido: {self.role}")
+                    self.name_window.destroy()
+                    self.setup_game_window()
+                
             except Exception as e:
                 print(f"Error al enviar el nombre: {e}")
                 messagebox.showerror("Error", "No se pudo conectar con el servidor")
@@ -91,16 +104,16 @@ class TicTacToeClient:
                     break
                 
                 game_state = json.loads(message)
-                self.update_board(game_state)
-                self.update_status(game_state)
+                self.window.after(0, self.update_board, game_state)
+                self.window.after(0, self.update_status, game_state)
                 
                 if 'winner' in game_state:
-                    messagebox.showinfo("Fin del juego", 
-                                      f"¡{game_state['winner']} ha ganado el juego!")
+                    self.window.after(0, lambda: messagebox.showinfo("Fin del juego", 
+                                      f"¡{game_state['winner']} ha ganado el juego!"))
             except Exception as e:
-                print(f"Error al recibir actualizaciones: {e}")
-                messagebox.showerror("Error", "Se perdió la conexión con el servidor")
-                break
+                pass
+                #messagebox.showerror("Error", "Se perdió la conexión con el servidor")
+                #break
         
         self.window.destroy()
     
